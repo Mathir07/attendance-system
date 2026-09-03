@@ -1,0 +1,355 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── CSS Variables — Light Mode ─────────────────────────────────────────── */
+:root {
+  --bg-page:        #F3F4F6;
+  --bg-card:        #FFFFFF;
+  --bg-card-hover:  #FAFAFA;
+  --bg-surface:     #F9FAFB;
+  --bg-surface-2:   #F3F4F6;
+  --bg-input:       #FFFFFF;
+  --border:         #E5E7EB;
+  --border-light:   #F3F4F6;
+  --text-primary:   #171923;
+  --text-secondary: #6B7280;
+  --text-muted:     #9CA3AF;
+  --text-table:     #374151;
+  --shadow-card:    0 2px 10px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-hover:   0 8px 24px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.06);
+}
+
+/* ─── CSS Variables — Dark Mode ──────────────────────────────────────────── */
+.dark {
+  --bg-page:        #0D1020;
+  --bg-card:        #111426;
+  --bg-card-hover:  #161B2E;
+  --bg-surface:     #161B2E;
+  --bg-surface-2:   #1E2540;
+  --bg-input:       #161B2E;
+  --border:         rgba(255,255,255,0.1);
+  --border-light:   rgba(255,255,255,0.06);
+  --text-primary:   #F1F5F9;
+  --text-secondary: #8A9BB8;
+  --text-muted:     #5B6B8A;
+  --text-table:     #C4CEDF;
+  --shadow-card:    0 2px 12px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2);
+  --shadow-hover:   0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3);
+}
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background-color: var(--bg-page);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+}
+
+/* ─── Geometric SVG background (used in nav/header areas) ─────────────────── */
+.geo-bg {
+  position: relative;
+  overflow: hidden;
+}
+.geo-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    url("data:image/svg+xml,%3Csvg width='600' height='600' viewBox='0 0 600 600' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='rgba(255,255,255,0.032)' stroke-width='1'%3E%3Cpolygon points='300,0 600,150 600,450 300,600 0,450 0,150'/%3E%3Cpolygon points='300,50 550,175 550,425 300,550 50,425 50,175'/%3E%3Cpolygon points='300,100 500,200 500,400 300,500 100,400 100,200'/%3E%3Cline x1='0' y1='0' x2='600' y2='600'/%3E%3Cline x1='600' y1='0' x2='0' y2='600'/%3E%3Cline x1='300' y1='0' x2='300' y2='600'/%3E%3Cline x1='0' y1='300' x2='600' y2='300'/%3E%3Ccircle cx='300' cy='300' r='200'/%3E%3Ccircle cx='300' cy='300' r='120'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 600px 600px;
+  background-position: center right;
+  background-repeat: no-repeat;
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 0;
+}
+.geo-bg > * { position: relative; z-index: 1; }
+
+/* Additional layered triangles for sidebar */
+.geo-sidebar::after {
+  content: '';
+  position: absolute;
+  bottom: -80px;
+  right: -80px;
+  width: 280px;
+  height: 280px;
+  background: rgba(245,197,24,0.04);
+  transform: rotate(45deg);
+  pointer-events: none;
+  border-radius: 24px;
+}
+
+/* ─── BUTTONS ──────────────────────────────────────────────────────────────── */
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2
+           text-sm font-medium transition-all duration-150 focus:outline-none
+           focus-visible:ring-2 focus-visible:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed select-none;
+  }
+
+  /* Yellow / golden — primary action */
+  .btn-primary {
+    @apply btn bg-accent-500 text-navy-900 hover:bg-accent-400
+           focus-visible:ring-accent-500 shadow-sm hover:shadow-md;
+  }
+
+  /* Dark outlined — secondary */
+  .btn-secondary {
+    @apply btn text-sm font-medium transition-all duration-150 shadow-sm;
+    background-color: var(--bg-card);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover {
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+    border-color: var(--border);
+  }
+
+  /* Navy filled */
+  .btn-navy {
+    @apply btn bg-navy-800 text-white border border-navy-600
+           hover:bg-navy-700 focus-visible:ring-navy-500 shadow-sm;
+  }
+
+  /* Danger */
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-500
+           focus-visible:ring-red-500 shadow-sm;
+  }
+
+  /* Success / approve */
+  .btn-success {
+    @apply btn bg-emerald-600 text-white hover:bg-emerald-500
+           focus-visible:ring-emerald-500 shadow-sm;
+  }
+
+  /* Ghost / minimal */
+  .btn-ghost {
+    @apply btn bg-transparent text-gray-600 hover:bg-surface-100
+           focus-visible:ring-gray-400;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs rounded;
+  }
+  .btn-xs {
+    @apply px-2 py-1 text-xs rounded;
+  }
+
+  /* ─── INPUTS ─────────────────────────────────────────────────────────────── */
+  .input {
+    @apply block w-full rounded-md px-3 py-2 text-sm
+           placeholder:text-gray-400
+           transition-colors duration-150
+           focus:outline-none focus:ring-2
+           disabled:cursor-not-allowed;
+    background-color: var(--bg-input);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .input:focus {
+    border-color: #F5C518;
+    box-shadow: 0 0 0 3px rgba(245,197,24,0.15);
+  }
+  .input:disabled {
+    background-color: var(--bg-surface);
+    color: var(--text-muted);
+  }
+
+  .label {
+    @apply block text-xs font-semibold uppercase tracking-wide mb-1.5;
+    color: var(--text-muted);
+  }
+
+  /* ─── CARDS ──────────────────────────────────────────────────────────────── */
+  .card {
+    @apply rounded-xl p-6;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow-card);
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+  .card-hover {
+    @apply card;
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .card-hover:hover {
+    box-shadow: var(--shadow-hover);
+    background-color: var(--bg-card-hover);
+  }
+
+  /* ─── BADGES ─────────────────────────────────────────────────────────────── */
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold;
+  }
+  .badge-green  { @apply badge bg-emerald-50  text-emerald-700 ring-1 ring-emerald-200; }
+  .badge-red    { @apply badge bg-red-50      text-red-700     ring-1 ring-red-200; }
+  .badge-yellow { @apply badge bg-amber-50    text-amber-700   ring-1 ring-amber-200; }
+  .badge-blue   { @apply badge bg-blue-50     text-blue-700    ring-1 ring-blue-200; }
+  .badge-gray   { @apply badge bg-gray-100    text-gray-600    ring-1 ring-gray-200; }
+  .badge-orange { @apply badge bg-orange-50   text-orange-700  ring-1 ring-orange-200; }
+  .badge-purple { @apply badge bg-purple-50   text-purple-700  ring-1 ring-purple-200; }
+
+  /* ─── TABLES ─────────────────────────────────────────────────────────────── */
+  .table-wrapper {
+    @apply overflow-x-auto rounded-xl;
+    border: 1px solid var(--border-light);
+  }
+  .table {
+    @apply min-w-full divide-y text-sm;
+    border-color: var(--border-light);
+  }
+  .table thead {
+    background-color: var(--bg-surface);
+  }
+  .table th {
+    @apply px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-widest whitespace-nowrap;
+    color: var(--text-muted);
+  }
+  .table td {
+    @apply px-4 py-3.5 whitespace-nowrap;
+    color: var(--text-table);
+  }
+  .table tbody tr {
+    @apply transition-colors duration-100;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .table tbody tr:last-child { border-bottom: none; }
+  .table tbody tr:hover {
+    background-color: var(--bg-surface);
+  }
+
+  /* ─── PAGE HEADER ────────────────────────────────────────────────────────── */
+  .page-title   {
+    @apply text-2xl font-bold tracking-tight;
+    color: var(--text-primary);
+  }
+  .page-subtitle {
+    @apply text-sm mt-0.5;
+    color: var(--text-muted);
+  }
+
+  /* ─── STAT CARD ──────────────────────────────────────────────────────────── */
+  .stat-card {
+    @apply card-hover flex flex-col gap-3;
+  }
+  .stat-value {
+    @apply text-3xl font-bold tracking-tight;
+    color: var(--text-primary);
+  }
+  .stat-label {
+    @apply text-xs font-semibold uppercase tracking-widest;
+    color: var(--text-muted);
+  }
+
+  /* ─── SECTION DIVIDER ────────────────────────────────────────────────────── */
+  .section-label {
+    @apply text-[10px] font-bold text-navy-100/50 uppercase tracking-[0.15em] px-3 py-2;
+  }
+
+  /* ─── ACCENT LINE (yellow left-border decoration) ────────────────────────── */
+  .accent-bar {
+    @apply border-l-2 border-accent-500 pl-3;
+  }
+
+  /* ─── NAV ITEM ───────────────────────────────────────────────────────────── */
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
+           text-navy-100 transition-all duration-150
+           hover:text-white;
+    color: #5B6B8A;
+  }
+  .nav-item:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+  }
+  .nav-item-active {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-white transition-all duration-150;
+    background-color: rgba(255, 255, 255, 0.10);
+  }
+
+  /* Yellow active indicator dot */
+  .nav-item-active::before {
+    content: '';
+    display: block;
+    width: 3px;
+    height: 18px;
+    background: #F5C518;
+    border-radius: 2px;
+    flex-shrink: 0;
+    margin-right: -4px;
+  }
+
+  /* ─── TAB BAR ────────────────────────────────────────────────────────────── */
+  .tab-bar {
+    @apply flex gap-1 bg-surface-100 p-1 rounded-xl w-fit;
+  }
+  .tab {
+    @apply px-5 py-2 rounded-lg text-sm font-medium capitalize transition-all duration-150
+           text-gray-500 hover:text-gray-700 hover:bg-white/60;
+  }
+  .tab-active {
+    @apply tab bg-white text-navy-800 shadow-card font-semibold;
+  }
+
+  /* ─── PROGRESS BAR ───────────────────────────────────────────────────────── */
+  .progress-track {
+    @apply w-full bg-gray-100 rounded-full h-1.5 overflow-hidden;
+  }
+  .progress-fill {
+    @apply h-full rounded-full bg-accent-500 transition-all duration-500;
+  }
+}
+
+/* ─── Dark mode overrides for Tailwind hardcoded color classes ───────────── */
+.dark .text-gray-900  { color: var(--text-primary) !important; }
+.dark .text-gray-800  { color: var(--text-primary) !important; }
+.dark .text-gray-700  { color: var(--text-secondary) !important; }
+.dark .text-gray-600  { color: var(--text-secondary) !important; }
+.dark .text-gray-500  { color: var(--text-muted) !important; }
+.dark .text-gray-400  { color: var(--text-muted) !important; }
+.dark .text-gray-300  { color: var(--text-muted) !important; }
+.dark .bg-white       { background-color: var(--bg-card) !important; }
+.dark .bg-gray-50     { background-color: var(--bg-surface) !important; }
+.dark .bg-gray-100    { background-color: var(--bg-surface-2) !important; }
+.dark .border-gray-100 { border-color: var(--border-light) !important; }
+.dark .border-gray-200 { border-color: var(--border) !important; }
+.dark .divide-gray-50 > * + * { border-color: var(--border-light) !important; }
+.dark .divide-gray-100 > * + * { border-color: var(--border-light) !important; }
+
+/* Dark mode — surface/inline panels */
+.dark [style*="background: #F9FAFB"],
+.dark [style*="background: #F3F4F6"],
+.dark [style*="background: #FFFFFF"],
+.dark [style*="background-color: #F9FAFB"],
+.dark [style*="background-color: white"] {
+  background-color: var(--bg-surface) !important;
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
+
+/* Sidebar scrollbar override */
+.sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); }
+.sidebar-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+
+/* ─── Utility — rgba helpers (not available as TW classes) ──────────────── */
+/* Use inline style={{ background: 'rgba(255,255,255,0.08)' }} for these */
