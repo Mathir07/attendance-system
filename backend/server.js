@@ -14,12 +14,14 @@ app.use(express.urlencoded({ extended: true }))
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
 
 // Routes
-app.use('/api/auth',       require('./routes/auth'))
-app.use('/api/attendance', require('./routes/attendance'))
-app.use('/api/leave',      require('./routes/leave'))
-app.use('/api/permission', require('./routes/permission'))
-app.use('/api/payslip',    require('./routes/payslip'))
-app.use('/api/hr',         require('./routes/hr'))
+app.use('/api/auth',         require('./routes/auth'))
+app.use('/api/attendance',   require('./routes/attendance'))
+app.use('/api/verification', require('./routes/verification'))
+app.use('/api/leave',        require('./routes/leave'))
+app.use('/api/permission',   require('./routes/permission'))
+app.use('/api/payslip',      require('./routes/payslip'))
+app.use('/api/hr',           require('./routes/hr'))
+app.use('/api/settings',     require('./routes/settings'))
 
 // Health
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'Attendance System API' }))

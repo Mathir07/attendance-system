@@ -102,10 +102,156 @@ function DayPopover({ r, dateStr, status, isFut, onClose }) {
   )
 }
 
-// ── Employee detail modal ─────────────────────────────────────────────────────
-function EmployeeDetailModal({ emp, year, month, onClose }) {
+// ── Helpers for verification display ─────────────────────────────────────────
+function fmtDelaySec(sec) {
+  if (sec == null) return '–'
+  const m = Math.floor(sec / 60)
+  const s = sec % 60
+  if (m > 0 && s > 0) return `${m}m ${s}s`
+  if (m > 0)           return `${m} min`
+  return `${s}s`
+}
+
+// ── Verification checks section (inside day-detail modal) ─────────────────────
+function VerificationChecksSection({ userId, date }) {
+  const [checks,  setChecks]  = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!userId || !date) return
+    setLoading(true)
+    api.get(`/verification/hr/${userId}/${date}`)
+      .then(r => setChecks(r.data))
+      .catch(() => setChecks([]))
+      .finally(() => setLoading(false))
+  }, [userId, date])
+
+  if (loading) return (
+    <div className="py-4 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
+      Loading verification checks…
+    </div>
+  )
+  if (!checks || checks.length === 0) return (
+    <p className="text-xs py-2" style={{ color: 'var(--text-muted)' }}>
+      No verification checks scheduled for this day.
+    </p>
+  )
+
+  return (
+    <div className="space-y-2">
+      <div className="table-wrapper">
+        <table className="table text-xs">
+          <thead>
+            <tr>
+              <th>Session</th>
+              <th>Triggered At</th>
+              <th>Responded At</th>
+              <th>Response Time</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {checks.map(c => {
+              const isSlow       = c.status === 'responded' && c.response_delay_seconds > 5 * 60
+              const statusLabel  = c.status === 'responded'
+                ? (isSlow ? 'Responded (slow)' : 'Responded')
+                : c.status === 'no_response' ? 'No Response'
+                : 'Pending'
+              const statusStyle  = c.status === 'responded' && !isSlow
+                ? { bg: '#ECFDF5', color: '#059669' }
+                : c.status === 'responded' && isSlow
+                ? { bg: '#FFFBEB', color: '#D97706' }
+                : c.status === 'no_response'
+                ? { bg: '#FEF2F2', color: '#DC2626' }
+                : { bg: 'var(--bg-surface)', color: 'var(--text-muted)' }
+
+              return (
+                <tr key={c.id}>
+                  <td className="font-medium">Session {c.session}</td>
+                  <td>{fmt12(c.scheduled_time)}</td>
+                  <td>{c.checkin_time ? fmt12(c.checkin_time) : '–'}</td>
+                  <td>{c.response_delay_seconds != null ? fmtDelaySec(c.response_delay_seconds) : '–'}</td>
+                  <td>
+                    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                      style={{ background: statusStyle.bg, color: statusStyle.color }}>
+                      {statusLabel}
+                    </span>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+// ── Day-detail modal (single employee, single day) ────────────────────────────
+function DayDetailModal({ emp, date, onClose }) {
   const [data,    setData]    = useState(null)
   const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!emp || !date) return
+    setLoading(true)
+    api.get(`/hr/attendance/${emp.id}/${date}`)
+      .then(r => setData(r.data))
+      .catch(() => toast.error('Failed to load day detail'))
+      .finally(() => setLoading(false))
+  }, [emp, date])
+
+  const dateLabel = date
+    ? new Date(date + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
+    : ''
+
+  return (
+    <Modal open={!!(emp && date)} onClose={onClose}
+      title={`${emp?.name} — ${dateLabel}`} size="md">
+      {loading ? (
+        <div className="py-10 flex items-center justify-center"><LoadingSpinner /></div>
+      ) : (
+        <div className="space-y-5">
+          {/* Check-in/out log */}
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest mb-3"
+              style={{ color: 'var(--text-muted)' }}>Activity Log</p>
+            {data?.logs?.length > 0 ? (
+              <div className="space-y-1.5">
+                {data.logs.map((l, i) => (
+                  <div key={i} className="flex items-center gap-3 text-xs">
+                    <span className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: l.action === 'check_in' ? '#059669' : '#DC2626' }} />
+                    <span className="font-semibold w-16 flex-shrink-0"
+                      style={{ color: l.action === 'check_in' ? '#059669' : '#DC2626' }}>
+                      {l.action === 'check_in' ? 'Check In' : 'Check Out'}
+                    </span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{fmt12(l.timestamp)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No activity recorded.</p>
+            )}
+          </div>
+
+          {/* Verification checks */}
+          <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
+            <p className="text-xs font-bold uppercase tracking-widest mb-3"
+              style={{ color: 'var(--text-muted)' }}>Verification Checks</p>
+            <VerificationChecksSection userId={emp?.id} date={date} />
+          </div>
+        </div>
+      )}
+    </Modal>
+  )
+}
+
+// ── Employee detail modal ─────────────────────────────────────────────────────
+function EmployeeDetailModal({ emp, year, month, onClose }) {
+  const [data,          setData]          = useState(null)
+  const [loading,       setLoading]       = useState(true)
+  const [dayDetail,     setDayDetail]     = useState(null)  // dateStr for day-detail sub-modal
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
   useEffect(() => {
@@ -186,7 +332,10 @@ function EmployeeDetailModal({ emp, year, month, onClose }) {
                     : '–'
 
                   return (
-                    <tr key={d} className={isFut ? 'opacity-30' : ''}>
+                    <tr key={d} className={isFut ? 'opacity-30' : 'cursor-pointer'}
+                      onClick={() => !isFut && rec && setDayDetail(dateStr)}
+                      onMouseEnter={e => { if (!isFut && rec) e.currentTarget.style.backgroundColor = 'var(--bg-surface)' }}
+                      onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent' }}>
                       <td className="font-medium text-xs">
                         {date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                       </td>
@@ -212,8 +361,19 @@ function EmployeeDetailModal({ emp, year, month, onClose }) {
               </tbody>
             </table>
           </div>
+
+          <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+            Click any day row to view verification checks and full activity log.
+          </p>
         </div>
       )}
+
+      {/* Day-detail sub-modal with verification checks */}
+      <DayDetailModal
+        emp={emp}
+        date={dayDetail}
+        onClose={() => setDayDetail(null)}
+      />
     </Modal>
   )
 }
@@ -221,18 +381,29 @@ function EmployeeDetailModal({ emp, year, month, onClose }) {
 // ── HR Attendance Grid ────────────────────────────────────────────────────────
 export default function HRAttendance() {
   const now = new Date()
-  const [year,      setYear]      = useState(now.getFullYear())
-  const [month,     setMonth]     = useState(now.getMonth() + 1)
-  const [data,      setData]      = useState(null)
-  const [loading,   setLoading]   = useState(true)
-  const [popover,   setPopover]   = useState(null)  // { empId, dateStr }
-  const [detailEmp, setDetailEmp] = useState(null)  // employee object for modal
+  const [year,              setYear]              = useState(now.getFullYear())
+  const [month,             setMonth]             = useState(now.getMonth() + 1)
+  const [data,              setData]              = useState(null)
+  const [loading,           setLoading]           = useState(true)
+  const [verificationFlags, setVerificationFlags] = useState({}) // "userId:dateStr" → { hasNoResponse, hasSlow }
+  const [popover,           setPopover]           = useState(null)
+  const [detailEmp,         setDetailEmp]         = useState(null)
 
   const fetchGrid = async () => {
     setLoading(true)
     try {
-      const res = await api.get(`/hr/attendance?year=${year}&month=${month}`)
-      setData(res.data)
+      const [gridRes, vfRes] = await Promise.all([
+        api.get(`/hr/attendance?year=${year}&month=${month}`),
+        api.get(`/verification/hr/grid?year=${year}&month=${month}`),
+      ])
+      setData(gridRes.data)
+
+      // Build lookup map: "userId:date" → flag object
+      const vfMap = {}
+      ;(vfRes.data || []).forEach(f => {
+        vfMap[`${f.user_id}:${f.date}`] = f
+      })
+      setVerificationFlags(vfMap)
     } catch { toast.error('Failed to load attendance grid') }
     finally { setLoading(false) }
   }
@@ -298,6 +469,14 @@ export default function HRAttendance() {
             <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{v.label}</span>
           </div>
         ))}
+        {/* Verification badge legend */}
+        <div className="flex items-center gap-1.5">
+          <span className="relative w-5 h-5 flex-shrink-0">
+            <span className="w-5 h-5 rounded bg-gray-300 flex items-center justify-center text-[10px] font-bold text-gray-600">P</span>
+            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-400 border border-white" />
+          </span>
+          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Verification flag</span>
+        </div>
         <span className="text-xs ml-2 flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
           · Click cell or name for details
         </span>
@@ -378,10 +557,11 @@ export default function HRAttendance() {
 
                       {/* Day cells */}
                       {cells.map(({ dateStr, status, r, isW, isFut }) => {
-                        const sv       = STATUS_STYLE[status]
-                        const isOpen   = popover?.empId === emp.id && popover?.dateStr === dateStr
-                        const hasLogs  = r?.logs?.length > 0
+                        const sv           = STATUS_STYLE[status]
+                        const isOpen       = popover?.empId === emp.id && popover?.dateStr === dateStr
                         const multiSession = (r?.logs || []).filter(l => l.action === 'check_in').length > 1
+                        const vFlag        = verificationFlags[`${emp.id}:${dateStr}`]
+                        const hasVBadge    = !!(vFlag?.hasNoResponse || vFlag?.hasSlow)
 
                         return (
                           <td key={dateStr}
@@ -398,8 +578,16 @@ export default function HRAttendance() {
                                 ${sv ? `${sv.bg} ${sv.text}` : 'bg-gray-200 text-gray-400'}`}>
                                 {sv?.short || '–'}
                                 {/* Multi-session indicator dot */}
-                                {multiSession && (
+                                {multiSession && !hasVBadge && (
                                   <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-purple-500 border border-white" />
+                                )}
+                                {/* Verification flag badge — amber for slow, red for no-response */}
+                                {hasVBadge && (
+                                  <span
+                                    className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full border border-white"
+                                    style={{ backgroundColor: vFlag.hasNoResponse ? '#DC2626' : '#F59E0B' }}
+                                    title={vFlag.hasNoResponse ? 'No-response verification' : 'Slow verification response'}
+                                  />
                                 )}
                               </span>
                             )}

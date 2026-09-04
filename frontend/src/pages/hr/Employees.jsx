@@ -4,6 +4,125 @@ import api from '../../api/axios'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import Modal from '../../components/Modal'
 
+// ── Verification summary widget ───────────────────────────────────────────────
+// Shown inside the employee edit modal — loads current-month stats.
+function VerificationSummary({ empId }) {
+  const now   = new Date()
+  const year  = now.getFullYear()
+  const month = now.getMonth() + 1
+
+  const [stats,   setStats]   = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!empId) return
+    setLoading(true)
+    api.get(`/verification/hr/${empId}/summary?year=${year}&month=${month}`)
+      .then(r => setStats(r.data))
+      .catch(() => setStats(null))
+      .finally(() => setLoading(false))
+  }, [empId])
+
+  const monthName = now.toLocaleString('default', { month: 'long' })
+
+  // Format avg delay seconds → "Xm Ys" or "–"
+  const fmtAvg = (sec) => {
+    if (sec == null) return '–'
+    const m = Math.floor(sec / 60)
+    const s = sec % 60
+    if (m > 0 && s > 0) return `${m}m ${s}s`
+    if (m > 0)           return `${m} min`
+    return `${s}s`
+  }
+
+  return (
+    <div>
+      <p className="text-xs font-bold uppercase tracking-widest mb-3"
+        style={{ color: 'var(--text-muted)' }}>
+        Verification Summary — {monthName} {year}
+      </p>
+
+      {loading ? (
+        <div className="py-3 text-xs" style={{ color: 'var(--text-muted)' }}>Loading…</div>
+      ) : !stats || stats.total === 0 ? (
+        <div className="rounded-xl px-4 py-3 text-xs"
+          style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)', color: 'var(--text-muted)' }}>
+          No verification checks recorded this month.
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          {/* Total checks */}
+          <div className="rounded-xl p-4"
+            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)' }}>
+            <p className="text-[10px] font-semibold uppercase tracking-wider mb-1"
+              style={{ color: 'var(--text-muted)' }}>Total Checks</p>
+            <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              {stats.total}
+            </p>
+          </div>
+
+          {/* Responded */}
+          <div className="rounded-xl p-4"
+            style={{ backgroundColor: '#ECFDF5', border: '1px solid #6EE7B7' }}>
+            <p className="text-[10px] font-semibold uppercase tracking-wider mb-1"
+              style={{ color: '#065F46' }}>Responded</p>
+            <p className="text-2xl font-bold" style={{ color: '#059669' }}>
+              {stats.respondedCount}
+              <span className="text-xs font-normal ml-1" style={{ color: '#6EE7B7' }}>
+                / {stats.total}
+              </span>
+            </p>
+          </div>
+
+          {/* No Response */}
+          <div className="rounded-xl p-4"
+            style={stats.noResponseCount > 0
+              ? { backgroundColor: '#FEF2F2', border: '1px solid #FECACA' }
+              : { backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)' }}>
+            <p className="text-[10px] font-semibold uppercase tracking-wider mb-1"
+              style={{ color: stats.noResponseCount > 0 ? '#991B1B' : 'var(--text-muted)' }}>
+              No Response
+            </p>
+            <p className="text-2xl font-bold"
+              style={{ color: stats.noResponseCount > 0 ? '#DC2626' : 'var(--text-muted)' }}>
+              {stats.noResponseCount}
+            </p>
+          </div>
+
+          {/* Avg response time */}
+          <div className="rounded-xl p-4"
+            style={stats.avgDelaySeconds != null && stats.avgDelaySeconds > 5 * 60
+              ? { backgroundColor: '#FFFBEB', border: '1px solid #FDE68A' }
+              : { backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)' }}>
+            <p className="text-[10px] font-semibold uppercase tracking-wider mb-1"
+              style={{ color: 'var(--text-muted)' }}>Avg Response</p>
+            <p className="text-2xl font-bold"
+              style={{ color: stats.avgDelaySeconds != null && stats.avgDelaySeconds > 5 * 60
+                ? '#D97706' : 'var(--text-primary)' }}>
+              {fmtAvg(stats.avgDelaySeconds)}
+            </p>
+          </div>
+
+          {/* Slow responses — only show if any */}
+          {stats.slowCount > 0 && (
+            <div className="col-span-2 rounded-xl px-4 py-3 flex items-center gap-3"
+              style={{ backgroundColor: '#FFFBEB', border: '1px solid #FDE68A' }}>
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24"
+                stroke="#D97706" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round"
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-xs" style={{ color: '#92400E' }}>
+                <span className="font-semibold">{stats.slowCount}</span> check{stats.slowCount !== 1 ? 's' : ''} responded in over 5 minutes this month.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const EMPTY_FORM = {
   name: '', email: '', password: '', employee_id: '',
   department: '', designation: '', phone: '', join_date: '',
@@ -287,6 +406,13 @@ export default function HREmployees() {
               </div>
             </div>
           </div>
+
+          {/* Verification summary — edit mode only */}
+          {modal === 'edit' && selected && (
+            <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '20px' }}>
+              <VerificationSummary empId={selected.id} />
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-3"
             style={{ borderTop: '1px solid var(--border-light)' }}>

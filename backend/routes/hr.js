@@ -137,13 +137,14 @@ router.delete('/employees/:id', auth, requireHR, async (req, res) => {
     if (emp.role !== 'employee') return res.status(403).json({ message: 'Can only delete employees' })
 
     // Cascade-delete all related records manually (SQLite may not enforce FK cascades without PRAGMA)
-    await db.runAsync('DELETE FROM attendance          WHERE user_id=?', [req.params.id])
-    await db.runAsync('DELETE FROM leave_requests      WHERE user_id=?', [req.params.id])
-    await db.runAsync('DELETE FROM permission_requests WHERE user_id=?', [req.params.id])
-    await db.runAsync('DELETE FROM leave_balances      WHERE user_id=?', [req.params.id])
-    await db.runAsync('DELETE FROM salary_structures   WHERE user_id=?', [req.params.id])
-    await db.runAsync('DELETE FROM payslips            WHERE user_id=?', [req.params.id])
-    await db.runAsync('DELETE FROM users               WHERE id=?',      [req.params.id])
+    await db.runAsync('DELETE FROM attendance            WHERE user_id=?', [req.params.id])
+    await db.runAsync('DELETE FROM leave_requests        WHERE user_id=?', [req.params.id])
+    await db.runAsync('DELETE FROM permission_requests   WHERE user_id=?', [req.params.id])
+    await db.runAsync('DELETE FROM leave_balances        WHERE user_id=?', [req.params.id])
+    await db.runAsync('DELETE FROM salary_structures     WHERE user_id=?', [req.params.id])
+    await db.runAsync('DELETE FROM payslips              WHERE user_id=?', [req.params.id])
+    await db.runAsync('DELETE FROM verification_checks   WHERE user_id=?', [req.params.id])
+    await db.runAsync('DELETE FROM users                 WHERE id=?',      [req.params.id])
 
     await db.runAsync(
       `INSERT INTO audit_logs (actor_id,actor_name,action,target_table,target_id,details)

@@ -135,6 +135,13 @@ router.post('/check-in', auth, async (req, res) => {
       [hhmm(firstCheckIn), hhmm(firstCheckIn), totalMins, newStatus, attendance.id]
     )
 
+    // ── Schedule verification triggers for this session (fire-and-forget) ──
+    // Imported lazily to avoid circular-require issues
+    try {
+      const { scheduleVerification } = require('./verificationHelper')
+      scheduleVerification(req.user.id, date, hhmm(time))
+    } catch { /* never block check-in on this */ }
+
     res.json({
       message: 'Checked in successfully',
       time: hhmm(time),

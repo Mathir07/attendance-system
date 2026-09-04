@@ -1,8 +1,10 @@
+
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Login from './pages/Login'
-
+import VerificationModal from './components/VerificationModal'
+import { useAuth } from './context/AuthContext'
 // Employee pages
 import EmployeeLayout   from './components/EmployeeLayout'
 import EmpDashboard     from './pages/employee/Dashboard'
@@ -10,6 +12,7 @@ import EmpAttendance    from './pages/employee/Attendance'
 import EmpLeave         from './pages/employee/Leave'
 import EmpPermission    from './pages/employee/Permission'
 import EmpPayslips      from './pages/employee/Payslips'
+import EmpSettings      from './pages/employee/Settings'
 
 // HR pages
 import HRLayout         from './components/HRLayout'
@@ -21,14 +24,30 @@ import HRPermission     from './pages/hr/Permission'
 import HRPayslips       from './pages/hr/Payslips'
 import HRHolidays       from './pages/hr/Holidays'
 import HRAuditLogs      from './pages/hr/AuditLogs'
+import HRSettings       from './pages/hr/Settings'
+
+// Redirects "/" based on auth state:
+//   loading      → nothing (spinner shown by ProtectedRoute)
+//   not logged in → /login
+//   employee      → /employee/dashboard
+//   hr / admin    → /hr/dashboard
+function RootRedirect() {
+  const { user, loading } = useAuth()
+  if (loading) return null
+  if (!user)   return <Navigate to="/login"              replace />
+  if (user.role === 'employee') return <Navigate to="/employee/dashboard" replace />
+  return <Navigate to="/hr/dashboard" replace />
+}
 
 export default function App() {
   return (
     <AuthProvider>
+      {/* Single global instance — renders above every page/route */}
+      <VerificationModal />
       <Routes>
         {/* Public */}
         <Route path="/login" element={<Login />} />
-        <Route path="/"      element={<Navigate to="/login" replace />} />
+        <Route path="/"      element={<RootRedirect />} />
 
         {/* Employee portal */}
         <Route element={<ProtectedRoute role="employee" />}>
@@ -38,6 +57,7 @@ export default function App() {
             <Route path="/employee/leave"      element={<EmpLeave />} />
             <Route path="/employee/permission" element={<EmpPermission />} />
             <Route path="/employee/payslips"   element={<EmpPayslips />} />
+            <Route path="/employee/settings"   element={<EmpSettings />} />
           </Route>
         </Route>
 
@@ -52,6 +72,7 @@ export default function App() {
             <Route path="/hr/payslips"   element={<HRPayslips />} />
             <Route path="/hr/holidays"   element={<HRHolidays />} />
             <Route path="/hr/audit-logs" element={<HRAuditLogs />} />
+            <Route path="/hr/settings"   element={<HRSettings />} />
           </Route>
         </Route>
 
