@@ -220,6 +220,52 @@ router.put('/hr/departments', auth, requireHR, async (req, res) => {
   }
 })
 
+// ── Designations ─────────────────────────────────────────────────────────────
+
+// GET /api/settings/hr/designations
+// Returns distinct designation list from users + any custom ones in company_settings
+router.get('/hr/designations', auth, requireHR, async (req, res) => {
+  try {
+    const rows = await db.allAsync(
+      `SELECT DISTINCT designation FROM users
+       WHERE designation IS NOT NULL AND designation != ''
+       ORDER BY designation`
+    )
+    const designations = rows.map(r => r.designation)
+
+    const setting = await db.getAsync(
+      `SELECT value FROM company_settings WHERE key='custom_designations'`
+    )
+    if (setting?.value) {
+      const custom = setting.value.split(',').map(s => s.trim()).filter(Boolean)
+      custom.forEach(d => { if (!designations.includes(d)) designations.push(d) })
+    }
+
+    res.json(designations.sort())
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message })
+  }
+})
+
+// PUT /api/settings/hr/designations
+// Body: { designations: ['Engineer', 'Manager', …] }
+router.put('/hr/designations', auth, requireHR, async (req, res) => {
+  try {
+    const { designations } = req.body
+    if (!Array.isArray(designations))
+      return res.status(400).json({ message: 'designations must be an array' })
+
+    await db.runAsync(
+      `INSERT INTO company_settings (key, value) VALUES ('custom_designations', ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+      [designations.filter(Boolean).join(',')]
+    )
+    res.json({ message: 'Designations saved' })
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message })
+  }
+})
+
 // ── HR own profile ────────────────────────────────────────────────────────────
 
 // GET /api/settings/hr/profile

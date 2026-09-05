@@ -130,22 +130,29 @@ const EMPTY_FORM = {
 }
 
 export default function HREmployees() {
-  const [employees,   setEmployees]   = useState([])
-  const [loading,     setLoading]     = useState(true)
-  const [modal,       setModal]       = useState(null) // 'add' | 'edit' | 'delete'
-  const [selected,    setSelected]    = useState(null)
-  const [saving,      setSaving]      = useState(false)
-  const [toggling,    setToggling]    = useState(null)
-  const [deleting,    setDeleting]    = useState(false)
-  const [search,      setSearch]      = useState('')
-  const [form,        setForm]        = useState(EMPTY_FORM)
+  const [employees,    setEmployees]    = useState([])
+  const [loading,      setLoading]      = useState(true)
+  const [modal,        setModal]        = useState(null) // 'add' | 'edit' | 'delete'
+  const [selected,     setSelected]     = useState(null)
+  const [saving,       setSaving]       = useState(false)
+  const [toggling,     setToggling]     = useState(null)
+  const [deleting,     setDeleting]     = useState(false)
+  const [search,       setSearch]       = useState('')
+  const [form,         setForm]         = useState(EMPTY_FORM)
+  const [departments,  setDepartments]  = useState([])
+  const [designations, setDesignations] = useState([])
 
   const fetchEmployees = async () => {
     try { const res = await api.get('/hr/employees'); setEmployees(res.data) }
     catch { toast.error('Failed to load employees') }
     finally { setLoading(false) }
   }
-  useEffect(() => { fetchEmployees() }, [])
+
+  useEffect(() => {
+    fetchEmployees()
+    api.get('/settings/hr/departments').then(r => setDepartments(r.data)).catch(() => {})
+    api.get('/settings/hr/designations').then(r => setDesignations(r.data)).catch(() => {})
+  }, [])
 
   const openAdd = () => { setForm(EMPTY_FORM); setSelected(null); setModal('add') }
 
@@ -379,10 +386,26 @@ export default function HREmployees() {
             <p className="text-xs font-bold uppercase tracking-widest mb-3"
               style={{ color: 'var(--text-muted)' }}>Work Info</p>
             <div className="grid grid-cols-2 gap-4">
-              <div><label className="label">Department</label>
-                <input type="text" className="input" placeholder="Engineering" {...f('department')} /></div>
-              <div><label className="label">Designation</label>
-                <input type="text" className="input" placeholder="Software Engineer" {...f('designation')} /></div>
+              <div>
+                <label className="label">Department</label>
+                <select className="input" {...f('department')}>
+                  <option value="">— Select department —</option>
+                  {departments.map(d => <option key={d} value={d}>{d}</option>)}
+                  {form.department && !departments.includes(form.department) && (
+                    <option value={form.department}>{form.department}</option>
+                  )}
+                </select>
+              </div>
+              <div>
+                <label className="label">Designation</label>
+                <select className="input" {...f('designation')}>
+                  <option value="">— Select designation —</option>
+                  {designations.map(d => <option key={d} value={d}>{d}</option>)}
+                  {form.designation && !designations.includes(form.designation) && (
+                    <option value={form.designation}>{form.designation}</option>
+                  )}
+                </select>
+              </div>
             </div>
           </div>
 

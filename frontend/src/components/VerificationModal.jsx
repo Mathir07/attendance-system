@@ -426,6 +426,7 @@ export default function VerificationModal() {
       const res = await api.post('/verification/respond', { verificationId })
       setCheckedInTime(res.data.checkinTime)
       setPhase('confirm')
+      setResponding(false)
       // Dismiss the OS notification now that the user has responded
       dismissSwNotification()
       confirmTimer.current = setTimeout(resetAll, CONFIRM_CLOSE_MS)

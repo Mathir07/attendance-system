@@ -126,6 +126,16 @@ function TabAttendance({ settings, onChange }) {
         </div>
       </SettingRow>
 
+      <SettingRow label="Minimum hours for half day"
+        hint="Work minutes below this threshold marks the day as Absent instead of Half Day">
+        <div className="flex items-center gap-2">
+          <input type="number" min="60" max="600" step="15" className="input"
+            value={settings.min_half_day_minutes || '300'}
+            onChange={e => onChange('min_half_day_minutes', e.target.value)} />
+          <span className="text-xs flex-shrink-0" style={{ color: 'var(--text-muted)' }}>mins</span>
+        </div>
+      </SettingRow>
+
       <div className="py-4">
         <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-primary)' }}>Weekend days</p>
         <div className="flex flex-wrap gap-2">
@@ -495,9 +505,11 @@ function TabNotifications({ settings, onChange }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // TAB: Company Profile
 // ═══════════════════════════════════════════════════════════════════════════════
-function TabCompany({ settings, onChange, departments, setDepartments }) {
+function TabCompany({ settings, onChange, departments, setDepartments, designations, setDesignations }) {
   const [newDept,    setNewDept]    = useState('')
   const [deptSaving, setDeptSaving] = useState(false)
+  const [newDesig,   setNewDesig]   = useState('')
+  const [desigSaving, setDesigSaving] = useState(false)
 
   const addDept = async () => {
     const d = newDept.trim()
@@ -518,6 +530,28 @@ function TabCompany({ settings, onChange, departments, setDepartments }) {
     setDepartments(next)
     try {
       await api.put('/settings/hr/departments', { departments: next })
+    } catch { toast.error('Failed to save') }
+  }
+
+  const addDesig = async () => {
+    const d = newDesig.trim()
+    if (!d || designations.includes(d)) return
+    const next = [...designations, d].sort()
+    setDesignations(next)
+    setNewDesig('')
+    setDesigSaving(true)
+    try {
+      await api.put('/settings/hr/designations', { designations: next })
+      toast.success('Designation added')
+    } catch { toast.error('Failed to save') }
+    finally { setDesigSaving(false) }
+  }
+
+  const removeDesig = async (desig) => {
+    const next = designations.filter(d => d !== desig)
+    setDesignations(next)
+    try {
+      await api.put('/settings/hr/designations', { designations: next })
     } catch { toast.error('Failed to save') }
   }
 
@@ -574,6 +608,41 @@ function TabCompany({ settings, onChange, departments, setDepartments }) {
                 style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
                 {d}
                 <button type="button" onClick={() => removeDept(d)}
+                  className="text-xs opacity-50 hover:opacity-100 transition-opacity"
+                  style={{ color: 'var(--text-muted)' }}>✕</button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Designations */}
+      <div>
+        <SectionTitle>Designations</SectionTitle>
+        <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
+          Manage the designation list used when creating or editing employees.
+        </p>
+
+        <div className="flex gap-2 mb-4">
+          <input type="text" className="input" placeholder="Add designation…"
+            value={newDesig}
+            onChange={e => setNewDesig(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addDesig() } }} />
+          <button onClick={addDesig} disabled={desigSaving || !newDesig.trim()} className="btn-primary btn-sm px-4">
+            Add
+          </button>
+        </div>
+
+        {designations.length === 0 ? (
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No designations added yet.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {designations.map(d => (
+              <span key={d}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium"
+                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+                {d}
+                <button type="button" onClick={() => removeDesig(d)}
                   className="text-xs opacity-50 hover:opacity-100 transition-opacity"
                   style={{ color: 'var(--text-muted)' }}>✕</button>
               </span>
@@ -794,6 +863,7 @@ export default function HRSettings() {
   const [settings,    setSettings]    = useState({})
   const [loading,     setLoading]     = useState(true)
   const [departments, setDepartments] = useState([])
+  const [designations, setDesignations] = useState([])
   const [dirty,       setDirty]       = useState(false)
   const [saving,      setSaving]      = useState(false)
 
@@ -801,9 +871,11 @@ export default function HRSettings() {
     Promise.all([
       api.get('/settings/hr'),
       api.get('/settings/hr/departments'),
-    ]).then(([s, d]) => {
+      api.get('/settings/hr/designations'),
+    ]).then(([s, d, dg]) => {
       setSettings(s.data)
       setDepartments(d.data)
+      setDesignations(dg.data)
     }).catch(() => toast.error('Failed to load settings'))
       .finally(() => setLoading(false))
   }, [])
@@ -869,6 +941,7 @@ export default function HRSettings() {
           <TabCompany
             settings={settings} onChange={handleChange}
             departments={departments} setDepartments={setDepartments}
+            designations={designations} setDesignations={setDesignations}
           />
         )}
         {activeTab === 'account' && (

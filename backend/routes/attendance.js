@@ -13,6 +13,7 @@ const SETTING_DEFAULTS = {
   lunch_start_time:       '13:00',
   lunch_end_time:         '14:00',
   min_full_day_minutes:   '270',
+  min_half_day_minutes:   '300',
 }
 
 async function getSettings() {
@@ -198,19 +199,22 @@ router.post('/check-out', auth, async (req, res) => {
 
     // Re-evaluate status based on total worked time
     const settings = await getSettings()
-    const minFullDay = parseInt(settings.min_full_day_minutes, 10)
+    const minFullDay  = parseInt(settings.min_full_day_minutes,  10)
+    const minHalfDay  = parseInt(settings.min_half_day_minutes,  10)
     const specialStatuses = ['on_leave', 'holiday', 'weekend']
     let newStatus = attendance.status
 
     if (!specialStatuses.includes(attendance.status)) {
-      // If total minutes < minFullDay but status was present/late, downgrade to half_day
-      if (totalMins < minFullDay && ['present', 'late'].includes(attendance.status)) {
+      const firstCI = logs.find(l => l.action === 'check_in')?.timestamp
+
+      if (totalMins < minHalfDay) {
+        // Worked less than 5 hours → absent (not enough to count as half day)
+        newStatus = 'absent'
+      } else if (totalMins < minFullDay) {
+        // Between 5 hours and full-day threshold → half day
         newStatus = 'half_day'
-      }
-      // Restore if they've now worked enough
-      if (totalMins >= minFullDay && attendance.status === 'half_day') {
-        // Re-derive from first check-in
-        const firstCI = logs.find(l => l.action === 'check_in')?.timestamp
+      } else {
+        // Worked enough for a full day → derive from first check-in time
         newStatus = firstCI ? computeStatus(firstCI, settings) : 'present'
       }
     }
