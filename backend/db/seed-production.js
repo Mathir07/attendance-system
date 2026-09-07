@@ -2,13 +2,13 @@ require('dotenv').config()
 const db = require('./database')
 
 async function seedProduction() {
-  console.log('🌱 Creating production users...')
+  console.log('🌱 Creating/updating production users...')
 
   const users = [
     {
       name: 'Vinoth Ravi',
       email: 'vinothravi2819@gmail.com',
-      password_hash: '$2a$10$0RFBWrXkgE1FXeNHtUQA.uGzRMR3zrFAYnug7/iM1TybXX7LIhOfK',
+      password_hash: 'Something@2026',
       role: 'hr',
       employee_id: 'HR001',
       status: 'active'
@@ -17,9 +17,15 @@ async function seedProduction() {
 
   for (const user of users) {
     await db.runAsync(
-      `INSERT OR IGNORE INTO users
+      `INSERT INTO users
        (name, email, password_hash, role, employee_id, status)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(email) DO UPDATE SET
+         name = excluded.name,
+         password_hash = excluded.password_hash,
+         role = excluded.role,
+         employee_id = excluded.employee_id,
+         status = excluded.status`,
       [
         user.name,
         user.email,
@@ -31,7 +37,7 @@ async function seedProduction() {
     )
   }
 
-  console.log('✓ Production HR user ready')
+  console.log('✓ Production HR user created/updated')
   process.exit(0)
 }
 
