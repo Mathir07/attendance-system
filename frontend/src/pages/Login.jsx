@@ -661,27 +661,6 @@ export default function Login() {
           </button>
         </form>
 
-        {/* Demo credentials */}
-        <div className="mt-8 p-4 rounded-xl border border-gray-100 bg-surface-50">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-            Demo Credentials
-          </p>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-500 font-medium">HR Admin</span>
-              <code className="text-xs text-navy-800 bg-white px-2 py-1 rounded border border-gray-100">
-                hr@company.com / hr123456
-              </code>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-500 font-medium">Employee</span>
-              <code className="text-xs text-navy-800 bg-white px-2 py-1 rounded border border-gray-100">
-                arun@company.com / emp123456
-              </code>
-            </div>
-          </div>
-        </div>
-
         <p className="text-center text-xs text-gray-300 mt-6">
           © 2026 KiwiTrack. Enterprise Edition.
         </p>
