@@ -4,6 +4,134 @@ const db     = require('../db/database')
 const { auth, requireHR } = require('../middleware/auth')
 const { getIndianHolidays } = require('../db/indianHolidays')
 
+// ── HR User Management ───────────────────────────────────────────────────────
+
+// GET /api/hr/hr-users
+router.get('/hr-users', auth, requireHR, async (req, res) => {
+  try {
+    const rows = await db.allAsync(
+      `SELECT id, name, email, employee_id, phone, department, designation, join_date, status, created_at
+       FROM users WHERE role = 'hr' ORDER BY name`
+    )
+    res.json(rows)
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message })
+  }
+})
+
+// POST /api/hr/hr-users — create HR user
+router.post('/hr-users', auth, requireHR, async (req, res) => {
+  try {
+    const { name, email, password, employee_id, phone, department, designation, join_date } = req.body
+    if (!name || !email || !password)
+      return res.status(400).json({ message: 'Name, email and password are required' })
+
+    const exists = await db.getAsync('SELECT id FROM users WHERE email = ?', [email.toLowerCase()])
+    if (exists) return res.status(409).json({ message: 'Email already registered' })
+
+    if (employee_id) {
+      const conflict = await db.getAsync('SELECT id FROM users WHERE employee_id = ?', [employee_id])
+      if (conflict) return res.status(409).json({ message: `Employee ID "${employee_id}" is already taken` })
+    }
+
+    const hash   = await bcrypt.hash(password, 10)
+    const result = await db.runAsync(
+      `INSERT INTO users (name, email, password_hash, role, employee_id, phone, department, designation, join_date, status)
+       VALUES (?, ?, ?, 'hr', ?, ?, ?, ?, ?, 'active')`,
+      [name, email.toLowerCase(), hash, employee_id || null, phone || null,
+       department || null, designation || null, join_date || null]
+    )
+
+    await db.runAsync(
+      `INSERT INTO audit_logs (actor_id, actor_name, action, target_table, target_id, details)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [req.user.id, req.user.name, 'CREATED_HR_USER', 'users', result.id, `Created HR user: ${name} (${email})`]
+    )
+
+    res.status(201).json({ message: 'HR user created successfully', id: result.id })
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message })
+  }
+})
+
+// PUT /api/hr/hr-users/:id — update HR user
+router.put('/hr-users/:id', auth, requireHR, async (req, res) => {
+  try {
+    const { name, employee_id, phone, department, designation, join_date, password } = req.body
+
+    const user = await db.getAsync(`SELECT id, role FROM users WHERE id = ?`, [req.params.id])
+    if (!user || user.role !== 'hr')
+      return res.status(404).json({ message: 'HR user not found' })
+
+    if (employee_id) {
+      const conflict = await db.getAsync(
+        'SELECT id FROM users WHERE employee_id = ? AND id != ?', [employee_id, req.params.id]
+      )
+      if (conflict) return res.status(409).json({ message: `Employee ID "${employee_id}" is already taken` })
+    }
+
+    await db.runAsync(
+      `UPDATE users SET name = ?, employee_id = ?, phone = ?, department = ?, designation = ?, join_date = ?
+       WHERE id = ? AND role = 'hr'`,
+      [name, employee_id || null, phone || null, department || null,
+       designation || null, join_date || null, req.params.id]
+    )
+
+    // Optional password reset
+    if (password && password.length >= 6) {
+      const hash = await bcrypt.hash(password, 10)
+      await db.runAsync(`UPDATE users SET password_hash = ? WHERE id = ?`, [hash, req.params.id])
+    }
+
+    res.json({ message: 'HR user updated' })
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message })
+  }
+})
+
+// PUT /api/hr/hr-users/:id/toggle — activate / deactivate
+router.put('/hr-users/:id/toggle', auth, requireHR, async (req, res) => {
+  try {
+    // Prevent deactivating yourself
+    if (parseInt(req.params.id) === req.user.id)
+      return res.status(400).json({ message: 'You cannot deactivate your own account' })
+
+    await db.runAsync(
+      `UPDATE users SET status = CASE WHEN status='active' THEN 'inactive' ELSE 'active' END
+       WHERE id = ? AND role = 'hr'`,
+      [req.params.id]
+    )
+    const u = await db.getAsync('SELECT status FROM users WHERE id = ?', [req.params.id])
+    res.json({ message: `HR user ${u.status === 'active' ? 'activated' : 'deactivated'}`, status: u.status })
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message })
+  }
+})
+
+// DELETE /api/hr/hr-users/:id — permanently delete HR user
+router.delete('/hr-users/:id', auth, requireHR, async (req, res) => {
+  try {
+    if (parseInt(req.params.id) === req.user.id)
+      return res.status(400).json({ message: 'You cannot delete your own account' })
+
+    const user = await db.getAsync('SELECT id, name, role FROM users WHERE id = ?', [req.params.id])
+    if (!user || user.role !== 'hr')
+      return res.status(404).json({ message: 'HR user not found' })
+
+    await db.runAsync('DELETE FROM users WHERE id = ? AND role = ?', [req.params.id, 'hr'])
+
+    await db.runAsync(
+      `INSERT INTO audit_logs (actor_id, actor_name, action, target_table, target_id, details)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [req.user.id, req.user.name, 'DELETED_HR_USER', 'users', req.params.id, `Deleted HR user: ${user.name}`]
+    )
+
+    res.json({ message: `${user.name} has been deleted` })
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message })
+  }
+})
+
 // ── Employee Management ──────────────────────────────────────────
 
 // GET /api/hr/employees
