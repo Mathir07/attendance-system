@@ -216,7 +216,7 @@ function HRUsers({ departments, designations }) {
         (u.email || '').toLowerCase().includes(q) ||
         (u.employee_id || '').toLowerCase().includes(q)
     })
-    .sort((a, b) => a.name.localeCompare(b.name))
+    .sort((a, b) => (a.employee_id || '').localeCompare(b.employee_id || '', undefined, { numeric: true, sensitivity: 'base' }))
 
   if (loading) return <LoadingSpinner />
 
